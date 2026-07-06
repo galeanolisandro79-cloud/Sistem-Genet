@@ -17,6 +17,22 @@ y el catálogo puede crecer a miles de artículos.
 1. Una cuenta en [Railway](https://railway.app) (ya la tenés).
 2. Una cuenta en [GitHub](https://github.com) para subir este código (si no tenés, es gratis y rápido de crear).
 
+## ⚠️ Cómo subir los archivos a GitHub sin errores
+
+Este proyecto ahora es más simple: **todo el código del servidor está en un solo archivo (`server.js`)**, no hay subcarpetas de código que se puedan perder al subir. Los únicos archivos que tenés que subir son:
+
+```
+server.js
+db.js
+package.json
+.gitignore
+public/index.html
+```
+
+Si usás el botón "Add file → Upload files" de GitHub: arrastrá primero los archivos sueltos (`server.js`, `db.js`, `package.json`, `.gitignore`), confirmá el commit, y después entrá a crear la carpeta `public` desde GitHub (botón "Add file → Create new file", escribí `public/index.html` como nombre — GitHub crea la carpeta sola) y pegá ahí el contenido de `public/index.html`.
+
+Después de subir, entrá a tu repositorio en GitHub y confirmá que ves los 4 archivos sueltos más la carpeta `public` con `index.html` adentro. Si falta algo ahí, va a faltar también en Railway.
+
 ## Paso a paso para subirlo a Railway
 
 ### 1. Subí este código a un repositorio de GitHub
