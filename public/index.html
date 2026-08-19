@@ -97,10 +97,7 @@
     transition:box-shadow .15s;
   }
   .card:hover{box-shadow:0 4px 14px rgba(13,39,72,0.1);}
-  .thumb{height:110px;background:var(--paper-alt);display:flex;align-items:center;justify-content:center;overflow:hidden;}
-  .thumb img{width:100%;height:100%;object-fit:cover;}
-  .thumb .no-img{font-family:var(--font-mono);font-size:10px;color:#00000055;text-transform:uppercase;letter-spacing:.07em;}
-  .card-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;flex:1;}
+  .card-body{padding:14px;display:flex;flex-direction:column;gap:4px;flex:1;}
   .sku{font-family:var(--font-mono);font-size:10px;color:var(--accent-dark);background:#ffffffb0;padding:2px 6px;border-radius:2px;width:fit-content;}
   .name{font-family:var(--font-display);font-size:13.5px;font-weight:600;line-height:1.25;min-height:34px;}
   .row-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:auto;gap:6px;}
@@ -189,14 +186,6 @@
     font-family:var(--font-body);font-size:14px;color:var(--ink);
   }
   input:focus{outline:2px solid var(--accent);outline-offset:0;}
-  .img-drop{
-    border:1.5px dashed var(--line);border-radius:3px;padding:14px;text-align:center;cursor:pointer;
-    background:#fff;transition:border-color .15s;
-  }
-  .img-drop:hover{border-color:var(--accent);}
-  .img-drop img{max-width:100%;max-height:120px;border-radius:2px;display:block;margin:0 auto 8px;}
-  .img-drop .placeholder{font-family:var(--font-mono);font-size:12px;color:#00000066;}
-  .img-drop input{display:none;}
   .form-actions{display:flex;gap:8px;margin-top:20px;}
   .btn-primary{
     flex:1;padding:12px;border:none;border-radius:3px;background:var(--accent);color:#fff;
@@ -219,12 +208,7 @@
     background:var(--card);border:1px solid var(--line);border-radius:4px;overflow:hidden;position:relative;
     display:flex;flex-direction:column;
   }
-  .tag-thumb{
-    height:120px;background:var(--paper-alt);display:flex;align-items:center;justify-content:center;overflow:hidden;
-  }
-  .tag-thumb img{width:100%;height:100%;object-fit:cover;}
-  .tag-thumb .no-img{font-family:var(--font-mono);font-size:10.5px;color:#00000055;text-transform:uppercase;letter-spacing:.08em;}
-  .tag-body{padding:12px 14px 14px;flex:1;display:flex;flex-direction:column;gap:4px;}
+  .tag-body{padding:14px;flex:1;display:flex;flex-direction:column;gap:4px;}
   .tag-sku{
     font-family:var(--font-mono);font-size:10.5px;color:var(--accent-dark);letter-spacing:.05em;
     background:#ffffffb0;display:inline-block;padding:2px 6px;border-radius:2px;width:fit-content;
@@ -316,13 +300,6 @@
       <h2 id="form-title">Nuevo artículo</h2>
       <div class="sub">Los cambios se reflejan automáticamente en el punto de venta.</div>
 
-      <label>Imagen</label>
-      <label class="img-drop" id="img-drop">
-        <img id="img-preview" style="display:none;">
-        <div class="placeholder" id="img-placeholder">Tocar para subir una foto<br>del producto</div>
-        <input type="file" id="img-input" accept="image/*" onchange="onImagenSeleccionada(event)">
-      </label>
-
       <label>Código de artículo</label>
       <input type="text" id="f-codigo" placeholder="Ej: 00123">
 
@@ -370,7 +347,7 @@
 const PAGINA_SIZE = 60;
 let adminToken = localStorage.getItem('genet_admin_token') || null;
 
-let posItems = [];      // productos mostrados actualmente en el punto de venta
+let posItems = [];
 let posPage = 1;
 let posTotal = 0;
 let posQuery = '';
@@ -380,11 +357,9 @@ let adminItems = [];
 let adminPage = 1;
 let adminTotal = 0;
 
-let carrito = {}; // id -> { producto, cantidad }
+let carrito = {};
 let editandoId = null;
-let imagenActual = '';
 
-/* ---------- API helper ---------- */
 async function api(path, opts = {}){
   const headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {});
   if(opts.auth && adminToken){ headers['Authorization'] = 'Bearer ' + adminToken; }
@@ -403,7 +378,6 @@ function escapeHtml(s){
   return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-/* ---------- NAVEGACIÓN ---------- */
 function mostrarVista(vista){
   if(vista==='admin' && !adminToken){
     document.getElementById('login-screen').style.display='flex';
@@ -450,7 +424,6 @@ function cerrarSesion(){
   mostrarVista('pos');
 }
 
-/* ---------- PUNTO DE VENTA (paginado desde el servidor) ---------- */
 function onBuscar(){
   clearTimeout(buscadorTimeout);
   buscadorTimeout = setTimeout(()=>{
@@ -487,7 +460,6 @@ function renderGridPos(){
     const disponible = stock - enCarrito;
     return `
       <div class="card">
-        <div class="thumb">${p.imagen ? `<img src="${p.imagen}" alt="${escapeHtml(p.nombre)}" loading="lazy">` : `<span class="no-img">Sin imagen</span>`}</div>
         <div class="card-body">
           <span class="sku">#${escapeHtml(p.codigo)}</span>
           <div class="name">${escapeHtml(p.nombre)}</div>
@@ -607,45 +579,6 @@ async function cobrarEImprimir(){
   }
 }
 
-/* ---------- ADMINISTRACIÓN (paginado desde el servidor) ---------- */
-document.getElementById('img-drop').addEventListener('click', ()=>{ document.getElementById('img-input').click(); });
-
-function resizeImagen(file, maxWidth=240, calidad=0.55){
-  return new Promise((resolve,reject)=>{
-    const reader = new FileReader();
-    reader.onload = e=>{
-      const img = new Image();
-      img.onload = ()=>{
-        const scale = Math.min(1, maxWidth/img.width);
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width*scale;
-        canvas.height = img.height*scale;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img,0,0,canvas.width,canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', calidad));
-      };
-      img.onerror = reject;
-      img.src = e.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-async function onImagenSeleccionada(ev){
-  const file = ev.target.files[0];
-  if(!file) return;
-  try{
-    const dataUrl = await resizeImagen(file);
-    imagenActual = dataUrl;
-    document.getElementById('img-preview').src = dataUrl;
-    document.getElementById('img-preview').style.display='block';
-    document.getElementById('img-placeholder').style.display='none';
-  }catch(e){
-    mostrarMsg('No se pudo procesar la imagen.', true);
-  }
-}
-
 async function cargarPaginaAdmin(page){
   const grid = document.getElementById('grid-admin');
   if(page===1) grid.innerHTML = '<div class="empty">Cargando catálogo...</div>';
@@ -676,9 +609,6 @@ function renderGridAdmin(){
     else if(stock<=5){ stockClass='stock-low'; stockLabel=stock+' — stock bajo'; }
     return `
       <div class="tag-card">
-        <div class="tag-thumb">
-          ${p.imagen ? `<img src="${p.imagen}" alt="${escapeHtml(p.nombre)}" loading="lazy">` : `<span class="no-img">Sin imagen</span>`}
-        </div>
         <div class="tag-body">
           <span class="tag-sku">#${escapeHtml(p.codigo)}</span>
           <div class="tag-name">${escapeHtml(p.nombre)}</div>
@@ -707,9 +637,6 @@ function limpiarForm(){
   document.getElementById('f-nombre').value='';
   document.getElementById('f-precio').value='';
   document.getElementById('f-cantidad').value='';
-  document.getElementById('img-preview').style.display='none';
-  document.getElementById('img-placeholder').style.display='block';
-  imagenActual='';
   editandoId=null;
   document.getElementById('form-title').textContent='Nuevo artículo';
   document.getElementById('btn-guardar').textContent='Agregar artículo';
@@ -724,15 +651,6 @@ function editarProducto(id){
   document.getElementById('f-nombre').value = p.nombre;
   document.getElementById('f-precio').value = p.precio;
   document.getElementById('f-cantidad').value = p.cantidad;
-  imagenActual = p.imagen || '';
-  if(imagenActual){
-    document.getElementById('img-preview').src = imagenActual;
-    document.getElementById('img-preview').style.display='block';
-    document.getElementById('img-placeholder').style.display='none';
-  } else {
-    document.getElementById('img-preview').style.display='none';
-    document.getElementById('img-placeholder').style.display='block';
-  }
   document.getElementById('form-title').textContent = 'Editar artículo #'+p.codigo;
   document.getElementById('btn-guardar').textContent='Guardar cambios';
   document.getElementById('btn-cancelar').style.display='inline-block';
@@ -758,7 +676,7 @@ async function guardarProducto(){
     return;
   }
 
-  const body = JSON.stringify({ codigo, nombre, precio, cantidad, imagen: imagenActual });
+  const body = JSON.stringify({ codigo, nombre, precio, cantidad });
 
   try{
     if(editandoId){
@@ -795,7 +713,6 @@ async function eliminarProducto(id){
   }
 }
 
-/* ---------- INICIO ---------- */
 cargarPaginaPos(1);
 </script>
 </body>
