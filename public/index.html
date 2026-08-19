@@ -718,6 +718,12 @@ async function eliminarProducto(id){
 }
 
 cargarPaginaPos(1);
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>
