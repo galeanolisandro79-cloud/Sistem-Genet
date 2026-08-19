@@ -1,12 +1,15 @@
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 
-// Railway inyecta DATABASE_URL automáticamente al agregar el plugin de PostgreSQL.
+// Detecta si es una base de datos local (sin SSL) o en la nube (con SSL) —
+// esto funciona tanto para Render como para Railway o cualquier otro proveedor,
+// sin tener que estar atado al nombre de una plataforma en particular.
+const urlDeDatos = process.env.DATABASE_URL || '';
+const esLocal = urlDeDatos.includes('localhost') || urlDeDatos.includes('127.0.0.1');
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('railway')
-    ? { rejectUnauthorized: false }
-    : (process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : false)
+  ssl: esLocal ? false : { rejectUnauthorized: false }
 });
 
 async function iniciarBaseDeDatos() {
@@ -17,7 +20,6 @@ async function iniciarBaseDeDatos() {
       nombre TEXT NOT NULL,
       precio NUMERIC(12,2) NOT NULL DEFAULT 0,
       cantidad INTEGER NOT NULL DEFAULT 0,
-      imagen TEXT,
       creado_en TIMESTAMPTZ NOT NULL DEFAULT now(),
       actualizado_en TIMESTAMPTZ NOT NULL DEFAULT now()
     );
