@@ -12,7 +12,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json({ limit: '8mb' })); // las imágenes viajan como base64 dentro del JSON
+app.use(express.json({ limit: '8mb' }));
 
 /* =========================================================
    MIDDLEWARE DE AUTENTICACIÓN (admin)
@@ -60,7 +60,6 @@ app.post('/api/auth/login', async (req, res) => {
    PRODUCTOS
 ========================================================= */
 
-// GET /api/productos?q=texto&page=1&limit=60 — público
 app.get('/api/productos', async (req, res) => {
   const q = (req.query.q || '').trim();
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -80,7 +79,7 @@ app.get('/api/productos', async (req, res) => {
 
     const dataParams = [...params, limit, offset];
     const dataRes = await pool.query(
-      `SELECT id, codigo, nombre, precio, cantidad, imagen
+      `SELECT id, codigo, nombre, precio, cantidad
        FROM productos ${where}
        ORDER BY lower(nombre) ASC
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
@@ -94,9 +93,8 @@ app.get('/api/productos', async (req, res) => {
   }
 });
 
-// POST /api/productos — crear producto (admin)
 app.post('/api/productos', authAdmin, async (req, res) => {
-  const { codigo, nombre, precio, cantidad, imagen } = req.body || {};
+  const { codigo, nombre, precio, cantidad } = req.body || {};
   if (!codigo || !nombre || precio === undefined || cantidad === undefined) {
     return res.status(400).json({ error: 'Completá código, nombre, precio y cantidad.' });
   }
@@ -106,9 +104,9 @@ app.post('/api/productos', authAdmin, async (req, res) => {
       return res.status(409).json({ error: 'Ya existe un artículo con ese código.' });
     }
     const { rows } = await pool.query(
-      `INSERT INTO productos (codigo, nombre, precio, cantidad, imagen)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [codigo, nombre, precio, cantidad, imagen || null]
+      `INSERT INTO productos (codigo, nombre, precio, cantidad)
+       VALUES ($1,$2,$3,$4) RETURNING *`,
+      [codigo, nombre, precio, cantidad]
     );
     res.status(201).json(rows[0]);
   } catch (e) {
@@ -117,10 +115,9 @@ app.post('/api/productos', authAdmin, async (req, res) => {
   }
 });
 
-// PUT /api/productos/:id — editar producto (admin)
 app.put('/api/productos/:id', authAdmin, async (req, res) => {
   const { id } = req.params;
-  const { codigo, nombre, precio, cantidad, imagen } = req.body || {};
+  const { codigo, nombre, precio, cantidad } = req.body || {};
   if (!codigo || !nombre || precio === undefined || cantidad === undefined) {
     return res.status(400).json({ error: 'Completá código, nombre, precio y cantidad.' });
   }
@@ -133,9 +130,9 @@ app.put('/api/productos/:id', authAdmin, async (req, res) => {
       return res.status(409).json({ error: 'Ya existe otro artículo con ese código.' });
     }
     const { rows } = await pool.query(
-      `UPDATE productos SET codigo=$1, nombre=$2, precio=$3, cantidad=$4, imagen=$5, actualizado_en=now()
-       WHERE id=$6 RETURNING *`,
-      [codigo, nombre, precio, cantidad, imagen || null, id]
+      `UPDATE productos SET codigo=$1, nombre=$2, precio=$3, cantidad=$4, actualizado_en=now()
+       WHERE id=$5 RETURNING *`,
+      [codigo, nombre, precio, cantidad, id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Artículo no encontrado.' });
     res.json(rows[0]);
@@ -145,7 +142,6 @@ app.put('/api/productos/:id', authAdmin, async (req, res) => {
   }
 });
 
-// DELETE /api/productos/:id — eliminar producto (admin)
 app.delete('/api/productos/:id', authAdmin, async (req, res) => {
   try {
     const { rows } = await pool.query('DELETE FROM productos WHERE id=$1 RETURNING id', [req.params.id]);
@@ -161,7 +157,6 @@ app.delete('/api/productos/:id', authAdmin, async (req, res) => {
    VENTAS
 ========================================================= */
 
-// POST /api/ventas — registrar venta y descontar stock de forma segura (público)
 app.post('/api/ventas', async (req, res) => {
   const { items } = req.body || {};
   if (!Array.isArray(items) || items.length === 0) {
@@ -206,7 +201,6 @@ app.post('/api/ventas', async (req, res) => {
   }
 });
 
-// GET /api/ventas — historial (admin)
 app.get('/api/ventas', authAdmin, async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 30));
